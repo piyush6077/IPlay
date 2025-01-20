@@ -12,3 +12,6 @@ const connectDB = async () => {
 }
 
 export default connectDB;
+
+
+// we can coonect in index throught 
