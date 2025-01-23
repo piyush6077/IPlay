@@ -1,5 +1,6 @@
 import asyncHandler from "../utils/asyncHandler.js";
 import {User} from "../models/User.model.js"
+import { ApiResponse } from "../utils/ApiResponse.js";
 
 const registerUser = asyncHandler(async (req, res)=>{
     // Take data from the user
@@ -40,6 +41,50 @@ const registerUser = asyncHandler(async (req, res)=>{
     if (existedUser){
         throw new ApiError(409,"User with email or username already exists")
     }
+
+
+    //Images 
+    // multer add some fields to the request object
+    const avatarLocalPath = req.files?.avatar[0]?.path // path of the file
+    // console.log(req.files)
+    const coverImageLocalPath = req.files?.coverImage[0]?.path;
+
+    // Check for images available or not
+    if (!avatarLocalPath){
+        throw new ApiError(400, "Avatar file is required")
+    }
+
+    const avatar = await uploadOnCLoudinary(avatarLocalPath)
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+
+    if (!avatar){
+        throw new ApiError(400, "Avatar upload failed")
+    }
+
+
+    // Create user object
+    const user = await User.create({
+        fullname, 
+        avatar: avatar.url,
+        coverImage: coverImage?.url || "",
+        email, 
+        password, 
+        username: username.toLowerCase()
+    })
+
+    // Remove password and refresh token from the response
+    const createdUser = await User.findById(user._id).select("-password -refreshToken")
+
+
+    // Check for user creation 
+    if(!createdUser){
+        throw new ApiError(500 , "Something went wrong while Registration")
+    }
+
+    //return response
+    return res.status(201).json(
+        new ApiResponse(200, createdUser , "User registered Successfully")
+    )
 })
 
 
