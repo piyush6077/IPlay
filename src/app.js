@@ -21,4 +21,14 @@ app.use(express.urlencoded({
 app.use(express.static("public")) //here we can store assets on the server that can be accessed by all
 app.use(cookieParser())         // TO GET and SET Cookies from the User
 
+
+
+//routes import 
+import userRouter from "./routes/user.routes.js"
+
+
+// routes declarations 
+app.use("/api/v1/users", userRouter)
+
+
 export {app}
