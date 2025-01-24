@@ -3,6 +3,29 @@ import {User} from "../models/User.model.js"
 import { ApiResponse } from "../utils/ApiResponse.js";
 import ApiError from"../utils/ApiError.js"
 import uploadOnCloudinary from "../utils/cloudinary.js"
+import { MdYoutubeSearchedFor } from "react-icons/md";
+
+
+//method to generate access and refreshtoken
+
+const generateAccessTokenAndRefreshToken = async (userId)=> {
+    try {
+        const user = await User.findOne({userId})
+        const accessToken = user.generateAccessToken()
+        const refreshToken = user.generateRefreshToken()
+
+        //save refresh token in db
+        user.refreshToken = refreshToken;
+        await user.save({validateBeforeSave: false});
+        //we did validateBeforeSave: false because we are not updating the user object and carious  models need to be 
+    
+        return {accessToken, refreshToken}
+    } catch (error) {
+        throw new ApiError(500, "Something went wrong while generating tokens")
+    }
+}
+
+
 
 const registerUser = asyncHandler(async (req, res)=>{
     // Take data from the user
@@ -96,5 +119,101 @@ const registerUser = asyncHandler(async (req, res)=>{
     )
 })
 
+const loginUser = asyncHandler(async (req, res)=>{
+    // take data from the user
+    // username or email
+    // validation - not empty
+    // check if user exists
+    // pasword check
+    // access and refesh token
+    // send cookie
+    // return response
 
-export {registerUser}
+    const {username, email , password} = req.body
+
+    //validation
+    if (!username || !email){
+        throw new ApiError(400, "Username or Email is required")
+    }
+
+    if (!password){
+        throw new ApiError(400, "Password is required")
+    }
+
+    // check if user exists
+    const user = await User.findOne({
+        $or: [
+            {username},
+            {email}
+        ]
+    })
+
+    if (!user){
+        throw new ApiError(404, "User not found")
+    }
+
+    //check password
+    const isPasswordVaild = await user.isPasswordCorrect(password)
+
+    if(!isPasswordVaild){
+        throw new ApiError(401, "Password is incorrect")
+    }
+
+    //access and refresh token 
+    const {accessToken , refreshToken} = await generateAccessTokenAndRefreshToken(user._id) 
+
+    //send cookie
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
+
+    const options = {
+        httpOnly: true,
+        secure: true
+    }
+
+    return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+        new ApiResponse(
+            200,
+            {
+                user: loggedInUser,accessToken,refreshToken
+            },
+            "user Logged In SuccessFully"
+        )
+    )
+})
+
+
+// logout
+const logoutUser = asyncHandler(async(req, res)=>{
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {
+                refreshToken: undefined
+            }
+        },
+        {
+            new: true
+        }
+    )
+
+    const options = {
+        httpOnly: true,
+        secure: true
+    }
+
+    return res
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("regreshToken", options)
+    .json(new ApiResponse(200 , {}, "User logged Out"))
+})
+
+export {
+    registerUser,
+    loginUser,
+    logoutUser
+}
