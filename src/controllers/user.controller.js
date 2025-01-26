@@ -30,8 +30,6 @@ const generateAccessTokenAndRefreshToken = async (userId)=> {
     }
 }
 
-
-
 const registerUser = asyncHandler(async (req, res)=>{
     // Take data from the user
     // ? validation - not empty
@@ -216,7 +214,6 @@ const logoutUser = asyncHandler(async(req, res)=>{
     .json(new ApiResponse(200 , {}, "User logged Out"))
 })
 
-
 //refresh token get the refresh token if access token or session is not ther 
 const refreshAccessToken = asyncHandler(async (req,res)=>{
     const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
@@ -262,10 +259,7 @@ const refreshAccessToken = asyncHandler(async (req,res)=>{
         throw new ApiError(401 , error?.message || "Invalid refresh Token")
     }
 
-
-
 })
-
 
 
 export {
